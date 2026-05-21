@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quizzer</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <span class="brand-name">Quizzer</span>
+  </div>
+  <nav class="topnav">
+    <button id="nav-home" class="link-btn" type="button">Domů</button>
+  </nav>
+</header>
+
+<main id="app"></main>
+
+<template id="view-upload">
+  <section class="card">
+    <h1>Nahrát kvíz</h1>
+    <p class="muted">Nahraj CSV soubor s otázkami, nebo začni s ukázkovým kvízem.</p>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept=".csv,text/csv,text/plain" hidden />
+      <div class="dropzone-inner">
+        <div class="dropzone-icon">⤓</div>
+        <div>Přetáhni sem CSV nebo <button class="link-btn" id="browse-btn" type="button">vyber soubor</button></div>
+        <div class="muted small">Podporované oddělovače: středník, čárka, tabulátor</div>
+      </div>
+    </div>
+
+    <div class="row gap">
+      <label class="field">
+        <span>Oddělovač</span>
+        <select id="delimiter-select">
+          <option value="auto" selected>Automaticky</option>
+          <option value=";">Středník (;)</option>
+          <option value=",">Čárka (,)</option>
+          <option value="\t">Tabulátor</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="use-default-btn" type="button">Použít ukázkový kvíz</button>
+    </div>
+  </section>
+</template>
+
+<template id="view-mapping">
+  <section class="card">
+    <h1>Přiřazení sloupců</h1>
+    <p class="muted">Urči, který sloupec je otázka, odpovědi, správná odpověď a vysvětlení.</p>
+
+    <div class="mapping-grid" id="mapping-grid"></div>
+
+    <div class="preview" id="preview"></div>
+
+    <div id="mapping-error" class="error" hidden></div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="back-to-upload" type="button">Zpět</button>
+      <button class="btn btn-primary" id="confirm-mapping" type="button">Pokračovat</button>
+    </div>
+  </section>
+</template>
+
+<template id="view-mode">
+  <section class="card">
+    <h1>Vyber režim</h1>
+    <p class="muted">Načteno otázek: <span id="loaded-count"></span></p>
+
+    <div class="modes">
+      <button class="mode-card" id="mode-learn" type="button">
+        <div class="mode-title">Učení</div>
+        <p class="muted">Po odpovědi okamžitě vidíš výsledek. Špatně zodpovězené otázky se v náhodném intervalu vrátí, dokud je nezvládneš.</p>
+      </button>
+      <button class="mode-card" id="mode-exam" type="button">
+        <div class="mode-title">Zkouška</div>
+        <p class="muted">Každá otázka jen jednou. Výsledky a vysvětlení uvidíš až na konci.</p>
+      </button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="back-to-mapping" type="button">Zpět</button>
+    </div>
+  </section>
+</template>
+
+<template id="view-quiz">
+  <section class="card quiz">
+    <div class="quiz-header">
+      <div class="progress">
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <div class="progress-meta" id="progress-meta"></div>
+      </div>
+      <button class="link-btn" id="quit-quiz" type="button">Ukončit</button>
+    </div>
+
+    <div class="question" id="question-text"></div>
+
+    <div class="answers" id="answers"></div>
+
+    <div class="explanation" id="explanation" hidden></div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="primary-action" type="button" disabled></button>
+    </div>
+  </section>
+</template>
+
+<template id="view-results">
+  <section class="card">
+    <h1>Výsledky</h1>
+    <div class="score" id="score"></div>
+
+    <div class="result-filter">
+      <button class="chip is-active" data-filter="all" type="button">Vše</button>
+      <button class="chip" data-filter="wrong" type="button">Špatné</button>
+      <button class="chip" data-filter="right" type="button">Správné</button>
+    </div>
+
+    <div class="result-list" id="result-list"></div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="results-home" type="button">Nový kvíz</button>
+      <button class="btn btn-ghost" id="results-retry-wrong" type="button" hidden>Zkusit znovu špatné</button>
+      <button class="btn btn-primary" id="results-retry" type="button">Opakovat všechno</button>
+    </div>
+  </section>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
