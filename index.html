@@ -19,11 +19,17 @@
 
 <main id="app"></main>
 
-<template id="view-upload">
+<template id="view-home">
   <section class="card">
-    <h1>Nahrát kvíz</h1>
-    <p class="muted">Nahraj CSV soubor s otázkami, nebo začni s ukázkovým kvízem.</p>
+    <h1>Knihovna kvízů</h1>
+    <p class="muted">Vyber kvíz ze složky <code>resources/</code>, nebo nahraj vlastní CSV.</p>
 
+    <div id="library-list" class="library-list"></div>
+    <div id="library-empty" class="muted small" hidden>Ve složce <code>resources/</code> zatím nejsou žádné CSV soubory.</div>
+  </section>
+
+  <section class="card">
+    <h2 class="card-subtitle">Nahrát vlastní CSV</h2>
     <div class="dropzone" id="dropzone">
       <input type="file" id="file-input" accept=".csv,text/csv,text/plain" hidden />
       <div class="dropzone-inner">
@@ -43,10 +49,6 @@
           <option value="\t">Tabulátor</option>
         </select>
       </label>
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-primary" id="use-default-btn" type="button">Použít ukázkový kvíz</button>
     </div>
   </section>
 </template>

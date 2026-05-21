@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'quizzer.state.v1';
-  const DEFAULT_CSV_URL = 'default-quiz.csv';
+  const RESOURCES_DIR = 'resources/';
+  const RESOURCES_INDEX = RESOURCES_DIR + 'index.json';
   const ROLE_LABELS = {
     question: 'Otázka',
     answer: 'Odpověď',
@@ -25,7 +25,7 @@
   const app = document.getElementById('app');
   const navHome = document.getElementById('nav-home');
 
-  navHome.addEventListener('click', () => showUpload());
+  navHome.addEventListener('click', () => showHome());
 
   // ----- CSV parsing -----
   function parseCSV(text, delimiter) {
@@ -68,25 +68,6 @@
     return best;
   }
 
-  // ----- Storage -----
-  function saveState() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        rawText: state.rawText,
-        delimiter: state.delimiter,
-        mapping: state.mapping,
-        headers: state.headers,
-      }));
-    } catch (e) { /* ignore */ }
-  }
-  function loadStoredState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) { return null; }
-  }
-
   // ----- Util -----
   function shuffle(arr) {
     const a = arr.slice();
@@ -109,17 +90,18 @@
     app.appendChild(wrapper);
   }
 
-  // ----- View: Upload -----
-  function showUpload() {
+  // ----- View: Home (library + upload) -----
+  function showHome() {
     state.quiz = null;
     state.mode = null;
-    mountTemplate('view-upload');
+    mountTemplate('view-home');
 
     const fileInput = document.getElementById('file-input');
     const browseBtn = document.getElementById('browse-btn');
     const dropzone = document.getElementById('dropzone');
     const delimSelect = document.getElementById('delimiter-select');
-    const useDefaultBtn = document.getElementById('use-default-btn');
+    const list = document.getElementById('library-list');
+    const empty = document.getElementById('library-empty');
 
     browseBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => {
@@ -144,7 +126,69 @@
       if (file) handleFile(file, delimSelect.value);
     });
 
-    useDefaultBtn.addEventListener('click', loadDefault);
+    fetchResourceIndex()
+      .then(files => {
+        if (!files || files.length === 0) {
+          empty.hidden = false;
+          return;
+        }
+        files.forEach(file => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'library-item';
+          item.innerHTML = `
+            <span class="library-item-name"></span>
+            <span class="library-item-file"></span>
+          `;
+          item.querySelector('.library-item-name').textContent = prettifyName(file);
+          item.querySelector('.library-item-file').textContent = file;
+          item.addEventListener('click', () => {
+            if (item.classList.contains('is-loading')) return;
+            item.classList.add('is-loading');
+            loadFromResource(file)
+              .catch(err => {
+                item.classList.remove('is-loading');
+                alert('Nepodařilo se načíst „' + file + '": ' + err.message);
+              });
+          });
+          list.appendChild(item);
+        });
+      })
+      .catch(() => {
+        empty.hidden = false;
+        empty.textContent = 'Knihovnu se nepodařilo načíst. Pokud testuješ lokálně, otevři aplikaci přes http server.';
+      });
+  }
+
+  function prettifyName(filename) {
+    return String(filename)
+      .replace(/\.csv$/i, '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function fetchResourceIndex() {
+    return fetch(RESOURCES_INDEX, { cache: 'no-cache' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (!Array.isArray(data)) return [];
+        return data
+          .map(x => typeof x === 'string' ? x : (x && x.file))
+          .filter(x => typeof x === 'string' && x.toLowerCase().endsWith('.csv'));
+      });
+  }
+
+  function loadFromResource(filename) {
+    return fetch(RESOURCES_DIR + encodeURIComponent(filename), { cache: 'no-cache' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(text => loadCsvText(text, 'auto'));
   }
 
   function handleFile(file, delimChoice) {
@@ -170,20 +214,7 @@
     state.headers = rows[0];
     state.rows = rows.slice(1);
     state.mapping = autoMap(state.headers);
-    saveState();
     showMapping();
-  }
-
-  function loadDefault() {
-    fetch(DEFAULT_CSV_URL)
-      .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.text();
-      })
-      .then(text => loadCsvText(text, 'auto'))
-      .catch(err => {
-        alert('Ukázkový kvíz se nepodařilo načíst (' + err.message + '). Otevři aplikaci přes http server nebo nahraj CSV ručně.');
-      });
   }
 
   function autoMap(headers) {
@@ -275,7 +306,7 @@
     table.appendChild(tbody);
     preview.appendChild(table);
 
-    backBtn.addEventListener('click', showUpload);
+    backBtn.addEventListener('click', showHome);
 
     confirmBtn.addEventListener('click', () => {
       const mapping = { question: null, answers: [], correct: null, explanation: null };
@@ -294,7 +325,6 @@
       }
       errBox.hidden = true;
       state.mapping = mapping;
-      saveState();
       buildQuestions();
       if (state.questions.length === 0) {
         errBox.hidden = false;
@@ -442,7 +472,7 @@
     const quitBtn = document.getElementById('quit-quiz');
 
     quitBtn.addEventListener('click', () => {
-      if (confirm('Opravdu chceš ukončit kvíz?')) showUpload();
+      if (confirm('Opravdu chceš ukončit kvíz?')) showHome();
     });
 
     let current, isLearn = state.mode === 'learn';
@@ -657,7 +687,7 @@
     renderEntries();
 
     retryBtn.addEventListener('click', () => startQuiz(state.mode));
-    homeBtn.addEventListener('click', showUpload);
+    homeBtn.addEventListener('click', showHome);
   }
 
   // ----- Helpers -----
@@ -676,41 +706,7 @@
 
   // ----- Boot -----
   function boot() {
-    const stored = loadStoredState();
-    if (stored && stored.rawText && stored.mapping) {
-      try {
-        state.rawText = stored.rawText;
-        state.delimiter = stored.delimiter || detectDelimiter(stored.rawText);
-        const rows = parseCSV(state.rawText, state.delimiter);
-        if (rows.length >= 2) {
-          state.headers = rows[0];
-          state.rows = rows.slice(1);
-          state.mapping = stored.mapping;
-          buildQuestions();
-          if (state.questions.length > 0) {
-            showModeSelect();
-            return;
-          }
-        }
-      } catch (e) { /* fall through to default */ }
-    }
-    // Try loading default quiz silently as a convenience
-    fetch(DEFAULT_CSV_URL)
-      .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
-      .then(text => {
-        state.rawText = text;
-        state.delimiter = detectDelimiter(text);
-        const rows = parseCSV(text, state.delimiter);
-        state.headers = rows[0];
-        state.rows = rows.slice(1);
-        state.mapping = autoMap(state.headers);
-        buildQuestions();
-        saveState();
-        showModeSelect();
-      })
-      .catch(() => {
-        showUpload();
-      });
+    showHome();
   }
 
   boot();
