@@ -132,32 +132,77 @@
           empty.hidden = false;
           return;
         }
-        files.forEach(file => {
-          const item = document.createElement('button');
-          item.type = 'button';
-          item.className = 'library-item';
-          item.innerHTML = `
-            <span class="library-item-name"></span>
-            <span class="library-item-file"></span>
-          `;
-          item.querySelector('.library-item-name').textContent = prettifyName(file);
-          item.querySelector('.library-item-file').textContent = file;
-          item.addEventListener('click', () => {
-            if (item.classList.contains('is-loading')) return;
-            item.classList.add('is-loading');
-            loadFromResource(file)
-              .catch(err => {
-                item.classList.remove('is-loading');
-                alert('Nepodařilo se načíst „' + file + '": ' + err.message);
-              });
-          });
-          list.appendChild(item);
-        });
+        renderLibrary(list, files);
       })
       .catch(() => {
         empty.hidden = false;
         empty.textContent = 'Knihovnu se nepodařilo načíst. Pokud testuješ lokálně, otevři aplikaci přes http server.';
       });
+  }
+
+  function renderLibrary(container, files) {
+    const groups = new Map();
+    files.forEach(path => {
+      const slash = path.lastIndexOf('/');
+      const folder = slash === -1 ? '' : path.slice(0, slash);
+      if (!groups.has(folder)) groups.set(folder, []);
+      groups.get(folder).push(path);
+    });
+
+    const folderKeys = Array.from(groups.keys()).sort((a, b) => {
+      if (a === '' && b !== '') return 1;
+      if (b === '' && a !== '') return -1;
+      return a.localeCompare(b, 'cs');
+    });
+
+    folderKeys.forEach(folder => {
+      const section = document.createElement('div');
+      section.className = 'library-section';
+
+      const heading = document.createElement('div');
+      heading.className = 'library-section-title';
+      heading.textContent = folder === '' ? 'Ostatní' : prettifyPath(folder);
+      section.appendChild(heading);
+
+      const grid = document.createElement('div');
+      grid.className = 'library-grid';
+
+      groups.get(folder).forEach(path => {
+        const filename = path.slice(path.lastIndexOf('/') + 1);
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'library-item';
+        item.innerHTML = `
+          <span class="library-item-name"></span>
+          <span class="library-item-file"></span>
+        `;
+        item.querySelector('.library-item-name').textContent = prettifyName(filename);
+        item.querySelector('.library-item-file').textContent = path;
+        item.addEventListener('click', () => {
+          if (item.classList.contains('is-loading')) return;
+          item.classList.add('is-loading');
+          loadFromResource(path)
+            .catch(err => {
+              item.classList.remove('is-loading');
+              alert('Nepodařilo se načíst „' + path + '": ' + err.message);
+            });
+        });
+        grid.appendChild(item);
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+  }
+
+  function prettifyPath(path) {
+    return path.split('/').map(prettifySegment).join(' / ');
+  }
+  function prettifySegment(seg) {
+    return String(seg)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function prettifyName(filename) {
@@ -182,8 +227,9 @@
       });
   }
 
-  function loadFromResource(filename) {
-    return fetch(RESOURCES_DIR + encodeURIComponent(filename), { cache: 'no-cache' })
+  function loadFromResource(relativePath) {
+    const url = RESOURCES_DIR + relativePath.split('/').map(encodeURIComponent).join('/');
+    return fetch(url, { cache: 'no-cache' })
       .then(r => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();

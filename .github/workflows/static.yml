@@ -36,7 +36,7 @@ jobs:
       - name: Generate resources index
         run: |
           mkdir -p resources
-          python -c "import os, json, glob; files=sorted([os.path.basename(f) for f in glob.glob('resources/*.csv')]); open('resources/index.json','w',encoding='utf-8').write(json.dumps(files, ensure_ascii=False, indent=2))"
+          python -c "import os, json, glob; files=sorted([os.path.relpath(f, 'resources').replace(os.sep, '/') for f in glob.glob('resources/**/*.csv', recursive=True)]); open('resources/index.json','w',encoding='utf-8').write(json.dumps(files, ensure_ascii=False, indent=2))"
           cat resources/index.json
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
